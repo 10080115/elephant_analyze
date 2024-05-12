@@ -12,7 +12,6 @@ def concatenate_behaviors(group):
 
 
 def get_dispatch_df(data, star_date='2024-03-01', end_date='2024-03-07'):
-    print('你好')
     data = data[(data['下单时间'] >= star_date) & (data['下单时间'] <= end_date)]
 
     time_cols = [col for col in data.columns if '时间' in col]
@@ -27,6 +26,7 @@ def get_dispatch_df(data, star_date='2024-03-01', end_date='2024-03-07'):
     data['分钟桶'] = data['小时'] * 60 + data['分钟']
     data['日期'] = data['下单时间'].astype(str)
     data['日期'] = data['日期'].apply(lambda x: x.split(" ")[0])
+    data_s = data[['订单编号', '站点']].drop_duplicates()
     print('1、日期处理完毕')
 
     df = data[['订单编号', '派单时间', '分配类型']]
@@ -81,7 +81,6 @@ def get_dispatch_df(data, star_date='2024-03-01', end_date='2024-03-07'):
     data_merge['接单-到店'] = (data_merge['到店'] - data_merge['接单']).dt.seconds
     data_merge['到店-取餐'] = (data_merge['取餐'] - data_merge['到店']).dt.seconds
     data_merge['取餐-到达'] = (data_merge['到达'] - data_merge['取餐']).dt.seconds
-    data_merge['派单时长'] = (data_merge['最大派单'] - data_merge['最小派单']).dt.seconds
     data_merge['开小派单-开始调度'] = (data_merge['最小派单'] - data_merge['开始调度']).dt.seconds
     data_merge['最大派单-最小派单'] = (data_merge['最大派单'] - data_merge['最小派单']).dt.seconds
     print('3、时间间隔处理完毕')
@@ -96,8 +95,40 @@ def get_dispatch_df(data, star_date='2024-03-01', end_date='2024-03-07'):
     dispatch_type_df['分配标记简化'] = np.where(dispatch_type_df['分配标记'].isin(type_list),
                                                 dispatch_type_df['分配标记'], '其他')
     data_merge_2 = data_merge.merge(dispatch_type_df)
+    data_merge_2 = data_merge_2.merge(data_s)
     print('4、分配标记隔处理完毕')
-    print(type(data_merge_2))
-    print(data_merge_2)
-    data_merge_2.to_csv(f'./data/dispatchlog_{star_date}_{end_date}.csv')
+    
+    cols = ['订单编号',
+        '站点',
+        '下单',
+        '开始调度',
+        '最小派单',
+        '开小派单-开始调度',
+        '最大派单',
+        '最大派单-最小派单',
+        '接单',
+        '派单-接单',
+        '到店',
+        '接单-到店',
+        '取餐',
+        '到店-取餐',
+        '到达',
+        '取餐-到达',
+        '最大派单_人工分配',
+        '最大派单_自动分配',
+        '最小派单_人工分配',
+        '最小派单_自动分配',
+        '派单数量_人工分配',
+        '派单数量_自动分配',
+        '最终类型',
+        '分配标记',
+        '分配标记简化',
+        '导航距离',
+        '小时',
+        '分钟',
+        '分钟桶',
+        '日期']    
+    data_merge_2 = data_merge_2.reindex(columns = cols)
+    print('存储路径', f'./data/dispatchlog_{star_date}_{end_date}.csv')
+    data_merge_2.to_csv(f'./data/dispatchlog_{star_date}_{end_date}.csv', index = False)
     return data_merge_2
